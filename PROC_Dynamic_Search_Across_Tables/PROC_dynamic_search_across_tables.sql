@@ -122,7 +122,7 @@ var sql_command    =
         AND 
             (
                 TABLE_TYPE           = \'${search_type}\'      OR
-                \'${search_table}\'  = \'ALL\'
+                \'${search_type}\'  = \'ALL\'
             ) 
      `;
 var tables_cursor = snowflake.execute({sqlText: sql_command, binds: [search_catalog, search_schema, search_table]});
