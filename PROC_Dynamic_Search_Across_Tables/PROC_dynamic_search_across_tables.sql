@@ -29,6 +29,14 @@ var search_type    = SEARCH_TYPE;
 var search_value   = SEARCH_VALUE;
 
 
+// Assigning input values to variables
+    var search_catalog = SEARCH_CATALOG;
+    var search_schema  = SEARCH_SCHEMA;
+    var search_table   = SEARCH_TABLE;
+    var search_type    = SEARCH_TYPE;
+    var search_value   = SEARCH_VALUE;
+    
+    
 // Create a transient table to store the results
 // Snowflake supports creating transient tables that persist until explicitly dropped and are available to all 
 // users with the appropriate privileges. Transient tables are similar to permanent tables with the key difference 
@@ -60,10 +68,10 @@ var createTempVWSchemasTablesColumns = `
         TABLES.TABLE_TYPE
     FROM        "${search_catalog}".INFORMATION_SCHEMA.COLUMNS AS COLS
     LEFT JOIN   "${search_catalog}".INFORMATION_SCHEMA.TABLES  AS TABLES
-           ON   
-                 COLS.TABLE_CATALOG = TABLES.TABLE_CATALOG AND
-                 COLS.TABLE_SCHEMA  = TABLES.TABLE_SCHEMA  AND
-                 COLS.TABLE_NAME    = TABLES.TABLE_NAME 
+            ON   
+                    COLS.TABLE_CATALOG = TABLES.TABLE_CATALOG AND
+                    COLS.TABLE_SCHEMA  = TABLES.TABLE_SCHEMA  AND
+                    COLS.TABLE_NAME    = TABLES.TABLE_NAME 
     WHERE
         1 = 1
         AND 
@@ -81,8 +89,8 @@ var createTempVWSchemasTablesColumns = `
                 COLS.TABLE_NAME      = \'${search_table}\'     OR
                 \'${search_table}\'  = \'ALL\'
             ) 
-     )
-     `;
+        )
+        `;
 snowflake.execute({sqlText: createTempVWSchemasTablesColumns});
 
 
@@ -124,7 +132,7 @@ var sql_command    =
                 TABLE_TYPE           = \'${search_type}\'      OR
                 \'${search_type}\'  = \'ALL\'
             ) 
-     `;
+        `;
 var tables_cursor = snowflake.execute({sqlText: sql_command, binds: [search_catalog, search_schema, search_table]});
 
 
@@ -136,9 +144,8 @@ while (tables_cursor.next()) {
 
     // Construct the search query with template literals
     sql_command = 
-           `
-           INSERT INTO ${tempCatalogName}.${tempSchemaName}.${tempTableName} (SCHEMA_NAME, TABLE_NAME, COLUMN_NAME)
-           SELECT 
+            `
+            SELECT 
                 \'${schema_name}\'  AS SCHEMA_NAME,
                 \'${table_name}\'   AS TABLE_NAME, 
                 \'${column_name}\'  AS COLUMN_NAME   
@@ -148,10 +155,20 @@ while (tables_cursor.next()) {
                 CAST("${column_name}" AS VARCHAR) = \'${search_value}\'
             LIMIT 1
             `;
-                
-    // Execute the search query
-    snowflake.execute({sqlText: sql_command, binds: [schema_name, table_name, column_name, search_value]});
 
+            
+    // Execute the search and count Rows
+    var rowCount = snowflake.execute({sqlText: sql_command, binds: [schema_name, table_name, column_name, search_value]}).getRowCount();
+    if (rowCount > 0) {
+        var insert_command = 
+        `
+        INSERT INTO ${tempCatalogName}.${tempSchemaName}.${tempTableName} (SCHEMA_NAME, TABLE_NAME, COLUMN_NAME)
+        VALUES 
+            (\'${schema_name}\', \'${table_name}\', \'${column_name}\')
+        `;
+        // Execute the insert command
+        snowflake.execute({sqlText: insert_command});
+    }
 
     // Close the search_cursor
     search_cursor = null;
@@ -159,13 +176,12 @@ while (tables_cursor.next()) {
 
 
 // Delete the view to clean up
-var deleteTempVWSchemasTablesColumns = `DROP VIEW ${tempCatalogName}.${tempSchemaName}.${TempVWSchemasTablesColumnsgit}`;
+var deleteTempVWSchemasTablesColumns = `DROP VIEW ${tempCatalogName}.${tempSchemaName}.${TempVWSchemasTablesColumns}`;
 snowflake.execute({sqlText: deleteTempVWSchemasTablesColumns});
 
 //Return a success message
 return `Search completed successfully | Query Results on -> ${tempCatalogName}.${tempSchemaName}.${tempTableName}         /-/-/-/->         
-After use Run | DROP TABLE ${tempCatalogName}.${tempSchemaName}.${tempTableName}
-        `
+After use Run | DROP TABLE ${tempCatalogName}.${tempSchemaName}.${tempTableName}`
 ';
 GRANT USAGE ON SCHEMA YOUR_tempCatalogName.YOUR_tempSchemaName TO ROLE YOUR_Role;
 -- Call the procedure to search for the value 
