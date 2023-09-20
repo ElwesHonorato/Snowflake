@@ -138,7 +138,7 @@ while (tables_cursor.next()) {
     sql_command = 
            `
            INSERT INTO ${tempCatalogName}.${tempSchemaName}.${tempTableName} (SCHEMA_NAME, TABLE_NAME, COLUMN_NAME)
-           SELECT DISTINCT
+           SELECT 
                 \'${schema_name}\'  AS SCHEMA_NAME,
                 \'${table_name}\'   AS TABLE_NAME, 
                 \'${column_name}\'  AS COLUMN_NAME   
@@ -146,6 +146,7 @@ while (tables_cursor.next()) {
                 "${search_catalog}"."${schema_name}"."${table_name}" 
             WHERE 
                 CAST("${column_name}" AS VARCHAR) = \'${search_value}\'
+            LIMIT 1
             `;
                 
     // Execute the search query
